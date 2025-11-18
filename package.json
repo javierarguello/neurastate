@@ -1,0 +1,33 @@
+{
+  "name": "neurastate-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "build:functions": "turbo run build --filter=@neurastate/cloud-functions --force",
+    "build:web": "turbo run build --filter=@neurastate/web --force",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "prisma": "npx prisma generate --schema packages/shared/prisma/schema.prisma"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.25",
+    "cloud-functions": "^0.0.1",
+    "prettier": "^3.1.1",
+    "shared": "^0.2.0",
+    "turbo": "^1.11.2"
+  },
+  "packageManager": "pnpm@8.15.0",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.0"
+  }
+}

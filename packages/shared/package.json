@@ -1,0 +1,25 @@
+{
+  "name": "@neurastate/shared",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --external @prisma/client",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch --external @prisma/client",
+    "lint": "tsc --noEmit",
+    "clean": "rm -rf .turbo node_modules dist"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.6",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "dependencies": {
+    "pg": "^8.16.3",
+    "pg-copy-streams": "^7.0.0"
+  }
+}
