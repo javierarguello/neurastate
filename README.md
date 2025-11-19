@@ -75,24 +75,26 @@ This package is the central shared layer for types, database schema, and utiliti
 Key components:
 
 - **Prisma schema**: `prisma/schema.prisma`
-  - Datasource: PostgreSQL with `DATABASE_URL` from `.env`.
-  - Schemas: `neurastate`.
+  - Datasource: PostgreSQL, configured via `prisma.config.ts` using `DATABASE_URL` from `.env`.
+  - Schemas: `neurastate` (multi-schema configuration in Prisma 7).
   - Model **`PropertyPointView`**
     - Maps to `neurastate.property_point_view`.
     - Uses `Decimal` for numeric fields that may contain fractions (bathrooms, areas, etc.).
     - Uses `Int` for identifiers and years.
+    - Includes raw and transformed geometry fields (`geomRaw` / `geom`).
   - Model **`Settings`**
     - Maps to `neurastate.settings`.
 
 - **SQL bootstrap schema**: `sql/schema.sql`
   - Creates the `neurastate` schema.
   - Defines:
-    - `neurastate.property_point_view` (main table).
+    - `neurastate.property_point_view` (main table), including `geom_raw` (SRID 2236) and `geom` (SRID 4326) plus a GiST index on `geom`.
     - `neurastate.property_point_view_staging` (staging table used for bulk imports).
     - `neurastate.settings`.
 
 - **Prisma factory**: `src/utils/prisma.factory.ts`
   - `createPrismaClient()` returns a configured `PrismaClient` instance.
+  - Uses Prisma 7 with the Postgres driver adapter `@prisma/adapter-pg` and a `pg` connection pool configured to use the `neurastate` schema.
 
 - **Settings service**: `src/services/settings.service.ts`
   - `SettingsService` provides methods to read configuration, such as the dataset URL used by the data import service.
@@ -135,7 +137,10 @@ Key services:
     6. `INSERT ... ON CONFLICT (objectid) DO UPDATE` from staging into `neurastate.property_point_view`:
        - New rows: inserted with `created_at` and `updated_at` set to `NOW()`.
        - Existing rows: updated in place, `updated_at` refreshed to `NOW()`.
-    7. Log the total row count in `neurastate.property_point_view` and return it.
+    7. Run two sequential `UPDATE` statements on `neurastate.property_point_view`:
+       - Populate `geom_raw` from `x_coord` / `y_coord` using `ST_SetSRID(ST_MakePoint(...), 2236)`.
+       - Populate `geom` from `geom_raw` using `ST_Transform(geom_raw, 4326)`.
+    8. Log the total row count in `neurastate.property_point_view` and return it.
 
   - Environment:
     - Requires `DATABASE_URL` in `.env`.
