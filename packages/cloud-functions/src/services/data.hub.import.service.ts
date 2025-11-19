@@ -141,143 +141,17 @@ export class DataHubImportService {
           try {
             console.log('[DataHubImportService] COPY completed. Bytes streamed:', totalBytes);
 
-            await client.query(`
-              INSERT INTO ${PROPERTY_POINT_VIEW_TABLE} (
-                x,
-                y,
-                objectid,
-                folio,
-                ttrrss,
-                x_coord,
-                y_coord,
-                true_site_addr,
-                true_site_unit,
-                true_site_city,
-                true_site_zip_code,
-                true_mailing_addr1,
-                true_mailing_addr2,
-                true_mailing_addr3,
-                true_mailing_city,
-                true_mailing_state,
-                true_mailing_zip_code,
-                true_mailing_country,
-                true_owner1,
-                true_owner2,
-                true_owner3,
-                condo_flag,
-                parent_folio,
-                dor_code_cur,
-                dor_desc,
-                subdivision,
-                bedroom_count,
-                bathroom_count,
-                half_bathroom_count,
-                floor_count,
-                unit_count,
-                building_actual_area,
-                building_heated_area,
-                lot_size,
-                year_built,
-                assessment_year_cur,
-                assessed_val_cur,
-                dos_1,
-                price_1,
-                legal,
-                pid,
-                dateofsale_utc,
-                created_at,
-                updated_at
-              )
-              SELECT
-                x,
-                y,
-                objectid,
-                folio,
-                ttrrss,
-                x_coord,
-                y_coord,
-                true_site_addr,
-                true_site_unit,
-                true_site_city,
-                true_site_zip_code,
-                true_mailing_addr1,
-                true_mailing_addr2,
-                true_mailing_addr3,
-                true_mailing_city,
-                true_mailing_state,
-                true_mailing_zip_code,
-                true_mailing_country,
-                true_owner1,
-                true_owner2,
-                true_owner3,
-                condo_flag,
-                parent_folio,
-                dor_code_cur,
-                dor_desc,
-                subdivision,
-                bedroom_count,
-                bathroom_count,
-                half_bathroom_count,
-                floor_count,
-                unit_count,
-                building_actual_area,
-                building_heated_area,
-                lot_size,
-                year_built,
-                assessment_year_cur,
-                assessed_val_cur,
-                dos_1,
-                price_1,
-                legal,
-                pid,
-                dateofsale_utc,
-                NOW() AS created_at,
-                NOW() AS updated_at
-              FROM ${PROPERTY_POINT_VIEW_STAGING_TABLE}
-              ON CONFLICT (objectid) DO UPDATE SET
-                x = EXCLUDED.x,
-                y = EXCLUDED.y,
-                folio = EXCLUDED.folio,
-                ttrrss = EXCLUDED.ttrrss,
-                x_coord = EXCLUDED.x_coord,
-                y_coord = EXCLUDED.y_coord,
-                true_site_addr = EXCLUDED.true_site_addr,
-                true_site_unit = EXCLUDED.true_site_unit,
-                true_site_city = EXCLUDED.true_site_city,
-                true_site_zip_code = EXCLUDED.true_site_zip_code,
-                true_mailing_addr1 = EXCLUDED.true_mailing_addr1,
-                true_mailing_addr2 = EXCLUDED.true_mailing_addr2,
-                true_mailing_addr3 = EXCLUDED.true_mailing_addr3,
-                true_mailing_city = EXCLUDED.true_mailing_city,
-                true_mailing_state = EXCLUDED.true_mailing_state,
-                true_mailing_zip_code = EXCLUDED.true_mailing_zip_code,
-                true_mailing_country = EXCLUDED.true_mailing_country,
-                true_owner1 = EXCLUDED.true_owner1,
-                true_owner2 = EXCLUDED.true_owner2,
-                true_owner3 = EXCLUDED.true_owner3,
-                condo_flag = EXCLUDED.condo_flag,
-                parent_folio = EXCLUDED.parent_folio,
-                dor_code_cur = EXCLUDED.dor_code_cur,
-                dor_desc = EXCLUDED.dor_desc,
-                subdivision = EXCLUDED.subdivision,
-                bedroom_count = EXCLUDED.bedroom_count,
-                bathroom_count = EXCLUDED.bathroom_count,
-                half_bathroom_count = EXCLUDED.half_bathroom_count,
-                floor_count = EXCLUDED.floor_count,
-                unit_count = EXCLUDED.unit_count,
-                building_actual_area = EXCLUDED.building_actual_area,
-                building_heated_area = EXCLUDED.building_heated_area,
-                lot_size = EXCLUDED.lot_size,
-                year_built = EXCLUDED.year_built,
-                assessment_year_cur = EXCLUDED.assessment_year_cur,
-                assessed_val_cur = EXCLUDED.assessed_val_cur,
-                dos_1 = EXCLUDED.dos_1,
-                price_1 = EXCLUDED.price_1,
-                legal = EXCLUDED.legal,
-                pid = EXCLUDED.pid,
-                dateofsale_utc = EXCLUDED.dateofsale_utc,
-                updated_at = NOW();
-            `);
+            console.log('[DataHubImportService] Starting upsert from staging into property_point_view');
+            const upsertedCount = await this._upsertFromStaging(client);
+            console.log('[DataHubImportService] Upsert from staging completed. Rows affected:', upsertedCount);
+
+            console.log('[DataHubImportService] Updating geom_raw using x_coord and y_coord');
+            const updatedGeomRawCount = await this._updateGeomRaw(client);
+            console.log('[DataHubImportService] geom_raw update completed. Rows affected:', updatedGeomRawCount);
+
+            console.log('[DataHubImportService] Updating geom by transforming geom_raw to SRID 4326');
+            const updatedGeomCount = await this._updateGeom(client);
+            console.log('[DataHubImportService] geom update completed. Rows affected:', updatedGeomCount);
 
             const countResult = await client.query<{
               count: string;
@@ -316,6 +190,181 @@ export class DataHubImportService {
     }
 
     return DEFAULT_IMPORT_URL;
+  }
+
+  /**
+   * Upsert records from the staging table into neurastate.property_point_view.
+   */
+  private async _upsertFromStaging(client: PgClient): Promise<number> {
+    const result = await client.query(`
+      INSERT INTO ${PROPERTY_POINT_VIEW_TABLE} (
+        x,
+        y,
+        objectid,
+        folio,
+        ttrrss,
+        x_coord,
+        y_coord,
+        true_site_addr,
+        true_site_unit,
+        true_site_city,
+        true_site_zip_code,
+        true_mailing_addr1,
+        true_mailing_addr2,
+        true_mailing_addr3,
+        true_mailing_city,
+        true_mailing_state,
+        true_mailing_zip_code,
+        true_mailing_country,
+        true_owner1,
+        true_owner2,
+        true_owner3,
+        condo_flag,
+        parent_folio,
+        dor_code_cur,
+        dor_desc,
+        subdivision,
+        bedroom_count,
+        bathroom_count,
+        half_bathroom_count,
+        floor_count,
+        unit_count,
+        building_actual_area,
+        building_heated_area,
+        lot_size,
+        year_built,
+        assessment_year_cur,
+        assessed_val_cur,
+        dos_1,
+        price_1,
+        legal,
+        pid,
+        dateofsale_utc,
+        created_at,
+        updated_at
+      )
+      SELECT
+        x,
+        y,
+        objectid,
+        folio,
+        ttrrss,
+        x_coord,
+        y_coord,
+        true_site_addr,
+        true_site_unit,
+        true_site_city,
+        true_site_zip_code,
+        true_mailing_addr1,
+        true_mailing_addr2,
+        true_mailing_addr3,
+        true_mailing_city,
+        true_mailing_state,
+        true_mailing_zip_code,
+        true_mailing_country,
+        true_owner1,
+        true_owner2,
+        true_owner3,
+        condo_flag,
+        parent_folio,
+        dor_code_cur,
+        dor_desc,
+        subdivision,
+        bedroom_count,
+        bathroom_count,
+        half_bathroom_count,
+        floor_count,
+        unit_count,
+        building_actual_area,
+        building_heated_area,
+        lot_size,
+        year_built,
+        assessment_year_cur,
+        assessed_val_cur,
+        dos_1,
+        price_1,
+        legal,
+        pid,
+        dateofsale_utc,
+        NOW() AS created_at,
+        NOW() AS updated_at
+      FROM ${PROPERTY_POINT_VIEW_STAGING_TABLE}
+      ON CONFLICT (objectid) DO UPDATE SET
+        x = EXCLUDED.x,
+        y = EXCLUDED.y,
+        folio = EXCLUDED.folio,
+        ttrrss = EXCLUDED.ttrrss,
+        x_coord = EXCLUDED.x_coord,
+        y_coord = EXCLUDED.y_coord,
+        true_site_addr = EXCLUDED.true_site_addr,
+        true_site_unit = EXCLUDED.true_site_unit,
+        true_site_city = EXCLUDED.true_site_city,
+        true_site_zip_code = EXCLUDED.true_site_zip_code,
+        true_mailing_addr1 = EXCLUDED.true_mailing_addr1,
+        true_mailing_addr2 = EXCLUDED.true_mailing_addr2,
+        true_mailing_addr3 = EXCLUDED.true_mailing_addr3,
+        true_mailing_city = EXCLUDED.true_mailing_city,
+        true_mailing_state = EXCLUDED.true_mailing_state,
+        true_mailing_zip_code = EXCLUDED.true_mailing_zip_code,
+        true_mailing_country = EXCLUDED.true_mailing_country,
+        true_owner1 = EXCLUDED.true_owner1,
+        true_owner2 = EXCLUDED.true_owner2,
+        true_owner3 = EXCLUDED.true_owner3,
+        condo_flag = EXCLUDED.condo_flag,
+        parent_folio = EXCLUDED.parent_folio,
+        dor_code_cur = EXCLUDED.dor_code_cur,
+        dor_desc = EXCLUDED.dor_desc,
+        subdivision = EXCLUDED.subdivision,
+        bedroom_count = EXCLUDED.bedroom_count,
+        bathroom_count = EXCLUDED.bathroom_count,
+        half_bathroom_count = EXCLUDED.half_bathroom_count,
+        floor_count = EXCLUDED.floor_count,
+        unit_count = EXCLUDED.unit_count,
+        building_actual_area = EXCLUDED.building_actual_area,
+        building_heated_area = EXCLUDED.building_heated_area,
+        lot_size = EXCLUDED.lot_size,
+        year_built = EXCLUDED.year_built,
+        assessment_year_cur = EXCLUDED.assessment_year_cur,
+        assessed_val_cur = EXCLUDED.assessed_val_cur,
+        dos_1 = EXCLUDED.dos_1,
+        price_1 = EXCLUDED.price_1,
+        legal = EXCLUDED.legal,
+        pid = EXCLUDED.pid,
+        dateofsale_utc = EXCLUDED.dateofsale_utc,
+        updated_at = NOW();
+    `);
+
+    return result.rowCount ?? 0;
+  }
+
+  /**
+   * Populate geom_raw from x_coord and y_coord (SRID 2236).
+   */
+  private async _updateGeomRaw(client: PgClient): Promise<number> {
+    const result = await client.query(`
+      UPDATE neurastate.property_point_view
+      SET geom_raw = ST_SetSRID(
+        ST_MakePoint(x_coord, y_coord),
+        2236
+      )
+      WHERE x_coord IS NOT NULL
+        AND y_coord IS NOT NULL;
+    `);
+
+    return result.rowCount ?? 0;
+  }
+
+  /**
+   * Populate geom by transforming geom_raw to SRID 4326.
+   */
+  private async _updateGeom(client: PgClient): Promise<number> {
+    const result = await client.query(`
+      UPDATE neurastate.property_point_view
+      SET geom = ST_Transform(geom_raw, 4326)
+      WHERE geom_raw IS NOT NULL;
+    `);
+
+    return result.rowCount ?? 0;
   }
 
   /**

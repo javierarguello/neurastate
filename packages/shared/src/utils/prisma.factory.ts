@@ -1,8 +1,22 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 
 /**
  * Create and configure a PrismaClient instance for Google Cloud SQL.
  */
 export function createPrismaClient(): PrismaClient {
-  return new PrismaClient();
+  const connectionString = process.env.DATABASE_URL;
+
+  if (!connectionString) {
+    throw new Error('[createPrismaClient] DATABASE_URL is not defined');
+  }
+
+  const pool = new Pool({
+    connectionString,
+    options: '-c search_path=neurastate',
+  });
+  const adapter = new PrismaPg(pool);
+
+  return new PrismaClient({ adapter });
 }

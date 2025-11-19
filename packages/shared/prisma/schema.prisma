@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  schemas  = ["neurastate"]
 }
 
 /// Maps to table neurastate.property_point_view
@@ -56,6 +57,7 @@ model PropertyPointView {
   geom                 Unsupported("geometry")? @map("geom")
 
   @@map("property_point_view")
+  @@schema("neurastate")
 }
 
 /// Maps to table neurastate.settings
@@ -66,4 +68,5 @@ model Settings {
   updatedAt            DateTime @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
 
   @@map("settings")
+  @@schema("neurastate")
 }
