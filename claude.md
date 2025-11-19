@@ -7,3 +7,6 @@ Replace important constant strings/numbers with named constant variables (avoid 
 Exported variables, methods, and interfaces must be descriptive, well-named, and documented.
 If a method has many parameters, use a params object; document each attribute and why it exists.
 When starting work on a new project, check if it's a Turborepo monorepo, and if so, scan all packages.
+
+When working with React Components, always try to create generic components to be reused in other components.
+When working with React Components, try to simplify and reduce code complexity by creating subcomponents.

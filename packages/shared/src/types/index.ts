@@ -101,3 +101,66 @@ export interface ISettings {
   createdAt: Date;
   updatedAt: Date;
 }
+
+/**
+ * Represents a geographic bounding box for map queries.
+ * Uses WGS84 coordinate system (SRID 4326).
+ */
+export interface IBoundingBox {
+  /** Minimum longitude (western boundary) */
+  minLng: number;
+  /** Minimum latitude (southern boundary) */
+  minLat: number;
+  /** Maximum longitude (eastern boundary) */
+  maxLng: number;
+  /** Maximum latitude (northern boundary) */
+  maxLat: number;
+}
+
+/**
+ * Lightweight property representation optimized for map display.
+ * Contains only essential fields needed to render markers and popups.
+ */
+export interface IMapProperty {
+  /** Unique identifier from property_point_view.objectid */
+  objectId: number;
+  /** WGS84 longitude coordinate */
+  lng: number;
+  /** WGS84 latitude coordinate */
+  lat: number;
+  /** Full site address */
+  address: string | null;
+  /** City name */
+  city: string | null;
+  /** ZIP code */
+  zipCode: string | null;
+  /** Property owner name */
+  owner: string | null;
+  /** Current assessed value */
+  assessedValue: number | null;
+  /** Last sale price */
+  lastSalePrice: number | null;
+  /** Number of bedrooms */
+  bedrooms: number | null;
+  /** Number of bathrooms */
+  bathrooms: number | null;
+  /** Building area in square feet */
+  buildingArea: number | null;
+  /** Year the property was built */
+  yearBuilt: number | null;
+  /** Property type description (DOR code description) */
+  propertyType: string | null;
+}
+
+/**
+ * Filter parameters for map property queries.
+ * All filters are optional and can be combined.
+ */
+export interface IMapPropertyFilters {
+  /** Geographic bounding box to filter properties */
+  bbox: IBoundingBox;
+  /** Current map zoom level (can be used for clustering/optimization) */
+  zoom?: number;
+  /** Maximum number of results to return (prevents overwhelming the client) */
+  limit?: number;
+}

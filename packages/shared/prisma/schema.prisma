@@ -53,8 +53,8 @@ model PropertyPointView {
   dateOfSaleUtc        DateTime? @db.Timestamptz(6) @map("dateofsale_utc")
   createdAt            DateTime  @default(now()) @db.Timestamptz(6) @map("created_at")
   updatedAt            DateTime  @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
-  geomRaw              Unsupported("geometry")? @map("geom_raw")
-  geom                 Unsupported("geometry")? @map("geom")
+  geomRaw              Unsupported("public.geometry(Point, 4326)")? @map("geom_raw")
+  geom                 Unsupported("public.geometry(Point, 4326)")? @map("geom")
 
   @@map("property_point_view")
   @@schema("neurastate")

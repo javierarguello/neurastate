@@ -13,8 +13,7 @@ export function createPrismaClient(): PrismaClient {
   }
 
   const pool = new Pool({
-    connectionString,
-    options: '-c search_path=neurastate',
+    connectionString
   });
   const adapter = new PrismaPg(pool);
 

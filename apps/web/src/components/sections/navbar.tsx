@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Building2, Menu, X } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -19,10 +20,11 @@ export function Navbar() {
   }, []);
 
   const navLinks = [
-    { label: 'Home', href: '#home' },
-    { label: 'Market Analysis', href: '#market' },
-    { label: 'About', href: '#about' },
-    { label: 'Contact', href: '#contact' },
+    { label: 'Home', href: '/', isExternal: true },
+    { label: 'Map', href: '/map', isExternal: true },
+    { label: 'Market Analysis', href: '#market', isExternal: false },
+    { label: 'About', href: '#about', isExternal: false },
+    { label: 'Contact', href: '#contact', isExternal: false },
   ];
 
   return (
@@ -55,19 +57,33 @@ export function Navbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                className={`text-base font-medium transition-colors ${
-                  isScrolled
-                    ? 'text-gray-700 hover:text-ocean-600'
-                    : 'text-white hover:text-turquoise-300'
-                }`}
-              >
-                {link.label}
-              </a>
-            ))}
+            {navLinks.map((link) =>
+              link.isExternal ? (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className={`text-base font-medium transition-colors ${
+                    isScrolled
+                      ? 'text-gray-700 hover:text-ocean-600'
+                      : 'text-white hover:text-turquoise-300'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ) : (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  className={`text-base font-medium transition-colors ${
+                    isScrolled
+                      ? 'text-gray-700 hover:text-ocean-600'
+                      : 'text-white hover:text-turquoise-300'
+                  }`}
+                >
+                  {link.label}
+                </a>
+              )
+            )}
           </div>
 
           {/* CTA Button */}
@@ -104,16 +120,27 @@ export function Navbar() {
             exit={{ opacity: 0, height: 0 }}
             className="md:hidden py-4 border-t border-gray-200"
           >
-            {navLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                className="block py-3 text-gray-700 hover:text-ocean-600"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                {link.label}
-              </a>
-            ))}
+            {navLinks.map((link) =>
+              link.isExternal ? (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className="block py-3 text-gray-700 hover:text-ocean-600"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ) : (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  className="block py-3 text-gray-700 hover:text-ocean-600"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  {link.label}
+                </a>
+              )
+            )}
             <Button className="w-full mt-4 bg-gradient-to-r from-turquoise-500 to-ocean-600 text-white">
               Contact Us
             </Button>
