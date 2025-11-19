@@ -4,8 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
-  schemas  = ["neurastate"]
 }
 
 /// Maps to table neurastate.property_point_view
@@ -15,8 +13,8 @@ model PropertyPointView {
   objectId             Int       @id @map("objectid")
   folio                String?   @db.Text
   ttrrss               Decimal?  @db.Decimal
-  xCoord               Decimal?  @db.Decimal @map("x_coord")
-  yCoord               Decimal?  @db.Decimal @map("y_coord")
+  xCoord               Float?    @db.DoublePrecision @map("x_coord")
+  yCoord               Float?    @db.DoublePrecision @map("y_coord")
   trueSiteAddr         String?   @db.Text @map("true_site_addr")
   trueSiteUnit         String?   @db.Text @map("true_site_unit")
   trueSiteCity         String?   @db.Text @map("true_site_city")
@@ -54,9 +52,10 @@ model PropertyPointView {
   dateOfSaleUtc        DateTime? @db.Timestamptz(6) @map("dateofsale_utc")
   createdAt            DateTime  @default(now()) @db.Timestamptz(6) @map("created_at")
   updatedAt            DateTime  @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
+  geomRaw              Unsupported("geometry")? @map("geom_raw")
+  geom                 Unsupported("geometry")? @map("geom")
 
   @@map("property_point_view")
-  @@schema("neurastate")
 }
 
 /// Maps to table neurastate.settings
@@ -67,5 +66,4 @@ model Settings {
   updatedAt            DateTime @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
 
   @@map("settings")
-  @@schema("neurastate")
 }

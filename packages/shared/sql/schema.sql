@@ -6,8 +6,8 @@ CREATE TABLE neurastate.property_point_view (
 	objectid int4 NOT NULL,
 	folio text NULL,
 	ttrrss numeric NULL,
-	x_coord numeric NULL,
-	y_coord numeric NULL,
+	x_coord float8 NULL,
+	y_coord float8 NULL,
 	true_site_addr text NULL,
 	true_site_unit text NULL,
 	true_site_city text NULL,
@@ -45,8 +45,12 @@ CREATE TABLE neurastate.property_point_view (
 	dateofsale_utc timestamptz NULL,
 	created_at timestamptz DEFAULT now() NOT NULL,
 	updated_at timestamptz DEFAULT now() NOT NULL,
+	geom_raw public.geometry(point, 2236) NULL,
+	geom public.geometry(point, 4326) NULL,
 	CONSTRAINT property_point_view_pkey PRIMARY KEY (objectid)
 );
+
+CREATE INDEX idx_property_point_view_geom ON neurastate.property_point_view USING gist (geom);
 
 CREATE TABLE neurastate.property_point_view_staging (
 	x numeric NULL,

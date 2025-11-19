@@ -14,12 +14,13 @@
     "lint": "turbo run lint",
     "clean": "turbo run clean",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "prisma": "npx prisma generate --schema packages/shared/prisma/schema.prisma"
+    "prisma": "prisma generate --schema packages/shared/prisma/schema.prisma"
   },
   "devDependencies": {
     "@types/node": "^20.19.25",
     "cloud-functions": "^0.0.1",
     "prettier": "^3.1.1",
+    "prisma": "^7.0.0",
     "shared": "^0.2.0",
     "turbo": "^1.11.2"
   },
@@ -28,6 +29,6 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@prisma/client": "^6.19.0"
+    "@prisma/client": "^7.0.0"
   }
 }
