@@ -57,6 +57,7 @@ export class MapService {
 
     // Use raw SQL with PostGIS for spatial query - only select coordinates
     // ST_MakeEnvelope creates a bbox, && operator uses the GiST index
+    // Filter for root properties only (condo_flag = false or null)
     const properties = await this._prisma.$queryRaw<IMapPropertyLight[]>`
       SELECT
         objectid as "objectId",
@@ -65,6 +66,7 @@ export class MapService {
       FROM neurastate.property_point_view
       WHERE
         geom IS NOT NULL
+        AND (condo_flag IS NULL OR condo_flag = 'false' OR condo_flag = '0')
         AND geom && ST_MakeEnvelope(
           ${bbox.minLng}::double precision,
           ${bbox.minLat}::double precision,
