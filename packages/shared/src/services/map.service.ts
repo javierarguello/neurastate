@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { createPrismaClient } from '../utils/prisma.factory';
-import type { IMapProperty, IMapPropertyFilters } from '../types';
+import type { IMapProperty, IMapPropertyLight, IMapPropertyFilters } from '../types';
 
 /**
  * Maximum number of properties to return in a single map query.
@@ -16,8 +16,9 @@ const DEFAULT_PROPERTIES_LIMIT = 1000;
 /**
  * Minimum zoom level required to load properties.
  * Prevents loading too much data when map is zoomed out.
+ * Higher values require more zoom (closer view) before loading data.
  */
-const MINIMUM_ZOOM_LEVEL = 13;
+const MINIMUM_ZOOM_LEVEL = 16;
 
 /**
  * Service responsible for querying property data optimized for map display.
@@ -31,17 +32,18 @@ export class MapService {
   }
 
   /**
-   * Retrieves properties within a geographic bounding box.
+   * Retrieves lightweight property data (coordinates only) within a geographic bounding box.
    *
    * Uses PostGIS spatial operators with the GiST index on the `geom` column
-   * for optimal performance. Only returns properties with valid coordinates.
+   * for optimal performance. Only returns objectId and coordinates for fast initial load.
+   * Full property details should be fetched on-demand using getPropertyDetails().
    *
-   * @param filters - Filter parameters including bounding box and optional limit
-   * @returns Array of lightweight property objects optimized for map markers
+   * @param filters - Filter parameters including bounding box, limit, and optional offset
+   * @returns Array of lightweight property objects containing only coordinates
    * @throws Error if zoom level is below minimum threshold
    */
-  public async getPropertiesInBounds(filters: IMapPropertyFilters): Promise<IMapProperty[]> {
-    const { bbox, limit, zoom } = filters;
+  public async getPropertiesInBounds(filters: IMapPropertyFilters): Promise<IMapPropertyLight[]> {
+    const { bbox, limit, zoom, offset = 0 } = filters;
 
     // Validate minimum zoom level
     if (zoom !== undefined && zoom < MINIMUM_ZOOM_LEVEL) {
@@ -53,8 +55,40 @@ export class MapService {
     // Apply limit with bounds checking
     const effectiveLimit = this._calculateEffectiveLimit(limit);
 
-    // Use raw SQL with PostGIS for spatial query
+    // Use raw SQL with PostGIS for spatial query - only select coordinates
     // ST_MakeEnvelope creates a bbox, && operator uses the GiST index
+    const properties = await this._prisma.$queryRaw<IMapPropertyLight[]>`
+      SELECT
+        objectid as "objectId",
+        ST_X(geom::geometry) as lng,
+        ST_Y(geom::geometry) as lat
+      FROM neurastate.property_point_view
+      WHERE
+        geom IS NOT NULL
+        AND geom && ST_MakeEnvelope(
+          ${bbox.minLng}::double precision,
+          ${bbox.minLat}::double precision,
+          ${bbox.maxLng}::double precision,
+          ${bbox.maxLat}::double precision,
+          4326
+        )
+      ORDER BY objectid
+      LIMIT ${effectiveLimit}
+      OFFSET ${offset}
+    `;
+
+    return properties;
+  }
+
+  /**
+   * Retrieves full details for a specific property by its objectId.
+   *
+   * Used for on-demand loading when user clicks a property marker.
+   *
+   * @param objectId - Unique property identifier
+   * @returns Full property details or null if not found
+   */
+  public async getPropertyDetails(objectId: number): Promise<IMapProperty | null> {
     const properties = await this._prisma.$queryRaw<IMapProperty[]>`
       SELECT
         objectid as "objectId",
@@ -72,19 +106,11 @@ export class MapService {
         year_built as "yearBuilt",
         dor_desc as "propertyType"
       FROM neurastate.property_point_view
-      WHERE
-        geom IS NOT NULL
-        AND geom && ST_MakeEnvelope(
-          ${bbox.minLng}::double precision,
-          ${bbox.minLat}::double precision,
-          ${bbox.maxLng}::double precision,
-          ${bbox.maxLat}::double precision,
-          4326
-        )
-      LIMIT ${effectiveLimit}
+      WHERE objectid = ${objectId}
+      LIMIT 1
     `;
 
-    return properties;
+    return properties.length > 0 ? properties[0] : null;
   }
 
   /**

@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { Client as PgClient } from 'pg';
-import { createPrismaClient, SettingsService } from '@neurastate/shared';
+import { createPrismaClient, SettingsService, buildDatabaseUrl } from '@neurastate/shared';
 import { copyFrom } from '@neurastate/shared';
 
 const DEFAULT_IMPORT_URL = 'https://example.com/neurastate/property_point_view.csv';
@@ -53,66 +53,16 @@ export class DataHubImportService {
       throw new Error(`[DataHubImportService] Failed to download CSV for COPY. Status: ${csvResponse.status}`);
     }
 
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
-      throw new Error('[DataHubImportService] DATABASE_URL is not defined');
-    }
+    const connectionString = buildDatabaseUrl();
 
     const client = new PgClient({ connectionString });
     await client.connect();
 
     console.log('[DataHubImportService] Connected to Postgres. Starting COPY → neurastate.property_point_view');
 
-    await client.query(`TRUNCATE TABLE ${PROPERTY_POINT_VIEW_STAGING_TABLE}`);
+    await this._truncatePropertyPointViewStaging(client);
 
-    const copySql = `
-      COPY ${PROPERTY_POINT_VIEW_STAGING_TABLE} (
-        x,
-        y,
-        objectid,
-        folio,
-        ttrrss,
-        x_coord,
-        y_coord,
-        true_site_addr,
-        true_site_unit,
-        true_site_city,
-        true_site_zip_code,
-        true_mailing_addr1,
-        true_mailing_addr2,
-        true_mailing_addr3,
-        true_mailing_city,
-        true_mailing_state,
-        true_mailing_zip_code,
-        true_mailing_country,
-        true_owner1,
-        true_owner2,
-        true_owner3,
-        condo_flag,
-        parent_folio,
-        dor_code_cur,
-        dor_desc,
-        subdivision,
-        bedroom_count,
-        bathroom_count,
-        half_bathroom_count,
-        floor_count,
-        unit_count,
-        building_actual_area,
-        building_heated_area,
-        lot_size,
-        year_built,
-        assessment_year_cur,
-        assessed_val_cur,
-        dos_1,
-        price_1,
-        legal,
-        pid,
-        dateofsale_utc
-      )
-      FROM STDIN
-      WITH (FORMAT csv, HEADER true)
-    `;
+    const copySql = this._buildCopyIntoStagingSql();
 
     const copyStream = client.query(copyFrom(copySql));
 
@@ -193,6 +143,69 @@ export class DataHubImportService {
   }
 
   /**
+   * Truncate the property_point_view staging table before a new import.
+   * Ensures we always start from a clean staging area.
+   */
+  private async _truncatePropertyPointViewStaging(client: PgClient): Promise<void> {
+    console.log('[DataHubImportService] Truncating staging table:', PROPERTY_POINT_VIEW_STAGING_TABLE);
+    await client.query(`TRUNCATE TABLE ${PROPERTY_POINT_VIEW_STAGING_TABLE}`);
+  }
+
+  /**
+   * Build the COPY FROM STDIN SQL used to stream the CSV into the staging table.
+   */
+  private _buildCopyIntoStagingSql(): string {
+    return `
+      COPY ${PROPERTY_POINT_VIEW_STAGING_TABLE} (
+        x,
+        y,
+        objectid,
+        folio,
+        ttrrss,
+        x_coord,
+        y_coord,
+        true_site_addr,
+        true_site_unit,
+        true_site_city,
+        true_site_zip_code,
+        true_mailing_addr1,
+        true_mailing_addr2,
+        true_mailing_addr3,
+        true_mailing_city,
+        true_mailing_state,
+        true_mailing_zip_code,
+        true_mailing_country,
+        true_owner1,
+        true_owner2,
+        true_owner3,
+        condo_flag,
+        parent_folio,
+        dor_code_cur,
+        dor_desc,
+        subdivision,
+        bedroom_count,
+        bathroom_count,
+        half_bathroom_count,
+        floor_count,
+        unit_count,
+        building_actual_area,
+        building_heated_area,
+        lot_size,
+        year_built,
+        assessment_year_cur,
+        assessed_val_cur,
+        dos_1,
+        price_1,
+        legal,
+        pid,
+        dateofsale_utc
+      )
+      FROM STDIN
+      WITH (FORMAT csv, HEADER true)
+    `;
+  }
+
+  /**
    * Upsert records from the staging table into neurastate.property_point_view.
    */
   private async _upsertFromStaging(client: PgClient): Promise<number> {
@@ -240,6 +253,7 @@ export class DataHubImportService {
         legal,
         pid,
         dateofsale_utc,
+        search_all,
         created_at,
         updated_at
       )
@@ -265,7 +279,10 @@ export class DataHubImportService {
         true_owner1,
         true_owner2,
         true_owner3,
-        condo_flag,
+        CASE
+          WHEN lower(s.condo_flag::text) = 'y' THEN true
+          ELSE false
+        END AS condo_flag,
         parent_folio,
         dor_code_cur,
         dor_desc,
@@ -286,9 +303,20 @@ export class DataHubImportService {
         legal,
         pid,
         dateofsale_utc,
+        unaccent(lower(
+            coalesce(s.folio,'') || ' ' ||
+            coalesce(s.true_site_addr,'') || ' ' ||
+            coalesce(s.true_site_unit,'') || ' ' ||
+            coalesce(s.true_site_city,'') || ' ' ||
+            coalesce(s.true_owner1,'') || ' ' ||
+            coalesce(s.true_owner2,'') || ' ' ||
+            coalesce(s.true_owner3,'') || ' ' ||
+            coalesce(s.dor_desc,'') || ' ' ||
+            coalesce(s.subdivision,'')
+        )) AS search_all,
         NOW() AS created_at,
         NOW() AS updated_at
-      FROM ${PROPERTY_POINT_VIEW_STAGING_TABLE}
+      FROM ${PROPERTY_POINT_VIEW_STAGING_TABLE} s
       ON CONFLICT (objectid) DO UPDATE SET
         x = EXCLUDED.x,
         y = EXCLUDED.y,
@@ -331,6 +359,7 @@ export class DataHubImportService {
         legal = EXCLUDED.legal,
         pid = EXCLUDED.pid,
         dateofsale_utc = EXCLUDED.dateofsale_utc,
+        search_all = EXCLUDED.search_all,
         updated_at = NOW();
     `);
 

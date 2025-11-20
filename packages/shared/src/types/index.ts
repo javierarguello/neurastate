@@ -118,8 +118,22 @@ export interface IBoundingBox {
 }
 
 /**
- * Lightweight property representation optimized for map display.
- * Contains only essential fields needed to render markers and popups.
+ * Ultra-lightweight property representation for initial map load.
+ * Contains only coordinates for rendering markers.
+ * Details are fetched on-demand when user clicks a marker.
+ */
+export interface IMapPropertyLight {
+  /** Unique identifier from property_point_view.objectid */
+  objectId: number;
+  /** WGS84 longitude coordinate */
+  lng: number;
+  /** WGS84 latitude coordinate */
+  lat: number;
+}
+
+/**
+ * Full property details loaded on-demand.
+ * Contains all fields needed to display in popup.
  */
 export interface IMapProperty {
   /** Unique identifier from property_point_view.objectid */
@@ -163,6 +177,8 @@ export interface IMapPropertyFilters {
   zoom?: number;
   /** Maximum number of results to return (prevents overwhelming the client) */
   limit?: number;
+  /** Offset for pagination (number of records to skip) */
+  offset?: number;
 }
 
 /**

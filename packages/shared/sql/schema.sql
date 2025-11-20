@@ -22,7 +22,7 @@ CREATE TABLE neurastate.property_point_view (
 	true_owner1 text NULL,
 	true_owner2 text NULL,
 	true_owner3 text NULL,
-	condo_flag text NULL,
+	condo_flag bool NULL,
 	parent_folio text NULL,
 	dor_code_cur numeric NULL,
 	dor_desc text NULL,
@@ -47,10 +47,14 @@ CREATE TABLE neurastate.property_point_view (
 	updated_at timestamptz DEFAULT now() NOT NULL,
 	geom_raw public.geometry(point, 2236) NULL,
 	geom public.geometry(point, 4326) NULL,
+	search_all text NULL,
 	CONSTRAINT property_point_view_pkey PRIMARY KEY (objectid)
 );
 
 CREATE INDEX idx_property_point_view_geom ON neurastate.property_point_view USING gist (geom);
+CREATE INDEX property_point_view_condo_flag_idx ON neurastate.property_point_view USING btree (condo_flag);
+CREATE INDEX idx_ppv_search_all_gin ON neurastate.property_point_view USING gin (to_tsvector('simple'::regconfig, search_all));
+CREATE INDEX property_point_view_folio_idx ON neurastate.property_point_view USING btree (folio);
 
 CREATE TABLE neurastate.property_point_view_staging (
 	x numeric NULL,

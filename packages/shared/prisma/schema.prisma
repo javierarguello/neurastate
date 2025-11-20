@@ -30,7 +30,7 @@ model PropertyPointView {
   trueOwner1           String?   @db.Text @map("true_owner1")
   trueOwner2           String?   @db.Text @map("true_owner2")
   trueOwner3           String?   @db.Text @map("true_owner3")
-  condoFlag            String?   @db.Text @map("condo_flag")
+  condoFlag            Boolean?  @db.Boolean @map("condo_flag")
   parentFolio          String?   @db.Text @map("parent_folio")
   dorCodeCur           Decimal?  @db.Decimal @map("dor_code_cur")
   dorDesc              String?   @db.Text @map("dor_desc")
@@ -55,6 +55,7 @@ model PropertyPointView {
   updatedAt            DateTime  @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
   geomRaw              Unsupported("public.geometry(Point, 4326)")? @map("geom_raw")
   geom                 Unsupported("public.geometry(Point, 4326)")? @map("geom")
+  searchAll            String?   @db.Text @map("search_all")
 
   @@map("property_point_view")
   @@schema("neurastate")

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   ApiResponse,
-  IMapProperty,
+  IMapPropertyLight,
   IBoundingBox,
   IMapPropertyFilters,
   MapService,
@@ -13,14 +13,17 @@ export const dynamic = 'force-dynamic';
 /**
  * GET /api/map/properties
  *
- * Retrieves properties within a geographic bounding box for map display.
+ * Retrieves lightweight property data (coordinates only) within a geographic bounding box.
+ * Returns only objectId and coordinates for fast initial load.
+ * Full property details should be fetched via /api/map/properties/[id].
  *
  * Query parameters:
  *   - bbox: Comma-separated bounding box "minLng,minLat,maxLng,maxLat"
  *   - zoom: Optional map zoom level
  *   - limit: Optional maximum number of results (default 1000, max 5000)
+ *   - offset: Optional offset for pagination (default 0)
  *
- * Example: /api/map/properties?bbox=-80.3,25.7,-80.1,25.9&zoom=12&limit=500
+ * Example: /api/map/properties?bbox=-80.3,25.7,-80.1,25.9&zoom=13&limit=500&offset=0
  */
 export async function GET(request: NextRequest) {
   try {
@@ -40,19 +43,21 @@ export async function GET(request: NextRequest) {
     // Parse optional parameters
     const zoom = _parseNumberParam(searchParams.get('zoom'));
     const limit = _parseNumberParam(searchParams.get('limit'));
+    const offset = _parseNumberParam(searchParams.get('offset'));
 
     // Build filters
     const filters: IMapPropertyFilters = {
       bbox,
       zoom,
       limit,
+      offset,
     };
 
     // Call service (all business logic is in the service)
     const mapService = new MapService();
     const properties = await mapService.getPropertiesInBounds(filters);
 
-    const response: ApiResponse<IMapProperty[]> = {
+    const response: ApiResponse<IMapPropertyLight[]> = {
       success: true,
       data: properties,
     };
