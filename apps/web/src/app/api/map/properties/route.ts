@@ -61,6 +61,20 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching map properties:', error);
 
+    // Check if error is due to insufficient zoom
+    if (error instanceof Error && error.message.includes('below minimum')) {
+      const mapService = new MapService();
+      const minimumZoom = mapService.getMinimumZoomLevel();
+
+      const response: ApiResponse = {
+        success: false,
+        error: 'Zoom in to view properties',
+        message: `Please zoom in to level ${minimumZoom} or higher to view properties`,
+      };
+
+      return NextResponse.json(response, { status: 400 });
+    }
+
     const response: ApiResponse = {
       success: false,
       error: 'Failed to fetch map properties',

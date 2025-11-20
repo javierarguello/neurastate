@@ -164,3 +164,17 @@ export interface IMapPropertyFilters {
   /** Maximum number of results to return (prevents overwhelming the client) */
   limit?: number;
 }
+
+/**
+ * Response when zoom level is insufficient to load properties.
+ */
+export interface IMapZoomRequiredResponse {
+  /** Indicates zoom is required */
+  zoomRequired: true;
+  /** Minimum zoom level needed to load properties */
+  minimumZoom: number;
+  /** Current zoom level */
+  currentZoom: number;
+  /** User-friendly message */
+  message: string;
+}

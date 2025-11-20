@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import { useEffect, useState, useCallback } from 'react';
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import type { IMapProperty } from '@neurastate/shared';
 import 'leaflet/dist/leaflet.css';
 
@@ -72,6 +71,7 @@ function PropertyMap({ className }: IPropertyMapProps) {
   const [properties, setProperties] = useState<IMapProperty[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [zoomMessage, setZoomMessage] = useState<string | null>(null);
 
   /**
    * Fetches properties within the given map bounds.
@@ -80,6 +80,7 @@ function PropertyMap({ className }: IPropertyMapProps) {
     async (bounds: L.LatLngBounds, zoom: number) => {
       setIsLoading(true);
       setError(null);
+      setZoomMessage(null);
 
       try {
         const sw = bounds.getSouthWest();
@@ -93,6 +94,10 @@ function PropertyMap({ className }: IPropertyMapProps) {
 
         if (data.success && data.data) {
           setProperties(data.data);
+        } else if (response.status === 400 && data.message) {
+          // Zoom level insufficient
+          setZoomMessage(data.message);
+          setProperties([]);
         } else {
           setError(data.error || 'Failed to load properties');
         }
@@ -135,6 +140,27 @@ function PropertyMap({ className }: IPropertyMapProps) {
         </div>
       )}
 
+      {zoomMessage && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-ocean-600 text-white px-6 py-3 rounded-lg shadow-lg">
+          <div className="flex items-center gap-2">
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"
+              />
+            </svg>
+            <span className="text-sm font-medium">{zoomMessage}</span>
+          </div>
+        </div>
+      )}
+
       {isLoading && (
         <div className="absolute top-4 right-4 z-[1000] bg-white px-4 py-2 rounded-lg shadow-lg">
           <div className="flex items-center gap-2">
@@ -156,18 +182,17 @@ function PropertyMap({ className }: IPropertyMapProps) {
         />
         <MapEventHandler onBoundsChange={_fetchProperties} />
         {properties.map((property) => (
-          <Marker
+          <CircleMarker
             key={property.objectId}
-            position={[property.lat, property.lng]}
-            icon={L.icon({
-              iconUrl: '/marker-icon.png',
-              iconRetinaUrl: '/marker-icon-2x.png',
-              shadowUrl: '/marker-shadow.png',
-              iconSize: [25, 41],
-              iconAnchor: [12, 41],
-              popupAnchor: [1, -34],
-              shadowSize: [41, 41],
-            })}
+            center={[property.lat, property.lng]}
+            radius={8}
+            pathOptions={{
+              fillColor: '#38bdf8',
+              fillOpacity: 0.6,
+              color: '#0ea5e9',
+              weight: 2,
+              opacity: 0.8,
+            }}
           >
             <Popup>
               <div className="min-w-[250px]">
@@ -232,7 +257,7 @@ function PropertyMap({ className }: IPropertyMapProps) {
                 </div>
               </div>
             </Popup>
-          </Marker>
+          </CircleMarker>
         ))}
       </MapContainer>
     </div>

@@ -14,6 +14,12 @@ const MAX_PROPERTIES_LIMIT = 5000;
 const DEFAULT_PROPERTIES_LIMIT = 1000;
 
 /**
+ * Minimum zoom level required to load properties.
+ * Prevents loading too much data when map is zoomed out.
+ */
+const MINIMUM_ZOOM_LEVEL = 13;
+
+/**
  * Service responsible for querying property data optimized for map display.
  * Uses spatial indexing (PostGIS) for efficient bounding box queries.
  */
@@ -21,7 +27,6 @@ export class MapService {
   private readonly _prisma: PrismaClient;
 
   constructor(prismaClient?: PrismaClient) {
-    console.log('prismaClient', process.env.DATABASE_URL);
     this._prisma = prismaClient ?? createPrismaClient();
   }
 
@@ -33,9 +38,17 @@ export class MapService {
    *
    * @param filters - Filter parameters including bounding box and optional limit
    * @returns Array of lightweight property objects optimized for map markers
+   * @throws Error if zoom level is below minimum threshold
    */
   public async getPropertiesInBounds(filters: IMapPropertyFilters): Promise<IMapProperty[]> {
-    const { bbox, limit } = filters;
+    const { bbox, limit, zoom } = filters;
+
+    // Validate minimum zoom level
+    if (zoom !== undefined && zoom < MINIMUM_ZOOM_LEVEL) {
+      throw new Error(
+        `Zoom level ${zoom} is below minimum required level ${MINIMUM_ZOOM_LEVEL}`
+      );
+    }
 
     // Apply limit with bounds checking
     const effectiveLimit = this._calculateEffectiveLimit(limit);
@@ -88,5 +101,14 @@ export class MapService {
 
     // Clamp between 1 and MAX_PROPERTIES_LIMIT
     return Math.max(1, Math.min(requestedLimit, MAX_PROPERTIES_LIMIT));
+  }
+
+  /**
+   * Returns the minimum zoom level required to load properties.
+   *
+   * @returns Minimum zoom level constant
+   */
+  public getMinimumZoomLevel(): number {
+    return MINIMUM_ZOOM_LEVEL;
   }
 }

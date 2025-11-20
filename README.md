@@ -165,15 +165,24 @@ Local Development
 Create a `.env` in the repo root based on `.env.example` and add at least:
 
 ```env
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/neurastate?schema=neurastate"
+# Database connection (individual variables avoid URL encoding issues)
+DB_INSTANCE_HOST=your-database-host
+DB_USER=postgres
+DB_PASS=your-password-with-special-chars
+DB_NAME=neurastate
 
+# Optional: Set to 0 to bypass TLS certificate validation (development only)
+NODE_TLS_REJECT_UNAUTHORIZED=0
+
+# GCP configuration
 GCP_PROJECT_ID=your-project-id
 GCP_REGION=us-central1
 
+# Next.js configuration
 NEXT_PUBLIC_API_URL=http://localhost:3000
 ```
 
-For some hosted Postgres setups, you may need to add `sslmode=require` (or `ssl=true`) to `DATABASE_URL`.
+**Note**: The database connection uses individual environment variables (`DB_INSTANCE_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`) instead of a single `DATABASE_URL`. This approach avoids URL encoding issues with special characters in passwords (e.g., `$`, `{`, `}`, `=`).
 
 ### Install dependencies
 
