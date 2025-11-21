@@ -48,12 +48,14 @@ CREATE TABLE neurastate.property_point_view (
 	geom_raw public.geometry(point, 2236) NULL,
 	geom public.geometry(point, 4326) NULL,
 	search_all text NULL,
+	is_parent_folio bool NULL,
 	CONSTRAINT property_point_view_pkey PRIMARY KEY (objectid)
 );
 
 CREATE INDEX idx_property_point_view_geom ON neurastate.property_point_view USING gist (geom);
 CREATE INDEX property_point_view_condo_flag_idx ON neurastate.property_point_view USING btree (condo_flag);
 CREATE INDEX idx_ppv_search_all_gin ON neurastate.property_point_view USING gin (to_tsvector('simple'::regconfig, search_all));
+CREATE INDEX property_point_view_is_parent_folio_idx ON neurastate.property_point_view USING btree (is_parent_folio);
 CREATE INDEX property_point_view_folio_idx ON neurastate.property_point_view USING btree (folio);
 
 CREATE TABLE neurastate.property_point_view_staging (
@@ -107,3 +109,13 @@ CREATE TABLE neurastate.settings (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE neurastate.property_meta (
+	object_id int4 NOT NULL,
+	folio text NOT NULL,
+	children_count int4 DEFAULT 0 NOT NULL,
+	CONSTRAINT newtable_property_meta_unique UNIQUE (object_id),
+	CONSTRAINT newtable_property_meta_object_id_fkey FOREIGN KEY (object_id) REFERENCES neurastate.property_point_view(objectid)
+);
+
+CREATE INDEX newtable_property_meta_children_count_idx ON neurastate.property_meta USING btree (children_count);

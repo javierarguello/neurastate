@@ -56,6 +56,9 @@ model PropertyPointView {
   geomRaw              Unsupported("public.geometry(Point, 4326)")? @map("geom_raw")
   geom                 Unsupported("public.geometry(Point, 4326)")? @map("geom")
   searchAll            String?   @db.Text @map("search_all")
+  isParentFolio        Boolean?  @db.Boolean @map("is_parent_folio")
+
+  propertyMeta         PropertyMeta? @relation("PropertyPointViewToPropertyMeta")
 
   @@map("property_point_view")
   @@schema("neurastate")
@@ -69,5 +72,17 @@ model Settings {
   updatedAt            DateTime @default(now()) @updatedAt @db.Timestamptz(6) @map("updated_at")
 
   @@map("settings")
+  @@schema("neurastate")
+}
+
+/// Maps to table neurastate.property_meta
+model PropertyMeta {
+  objectId      Int    @id @map("object_id")
+  folio         String @db.Text
+  childrenCount Int    @default(0) @map("children_count")
+
+  property      PropertyPointView @relation("PropertyPointViewToPropertyMeta", fields: [objectId], references: [objectId])
+
+  @@map("property_meta")
   @@schema("neurastate")
 }
